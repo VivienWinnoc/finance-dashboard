@@ -2,37 +2,51 @@ import numpy as np
 import pandas as pd
 
 
-def linear_price_prediction(
-    prices: pd.Series,
-    horizon: int = 30
-) -> pd.Series:
+def _infer_step(index: pd.DatetimeIndex):
+    """Infère un pas de temps (Timedelta) à partir de l'index."""
+    if len(index) < 2:
+        return pd.Timedelta(days=1)
+
+    freq = pd.infer_freq(index)
+    if freq is not None:
+        try:
+            return pd.tseries.frequencies.to_offset(freq).delta
+        except Exception:
+            pass
+
+    deltas = index.to_series().diff().dropna()
+    if deltas.empty:
+        return pd.Timedelta(days=1)
+    return deltas.median()
+
+
+def linear_price_prediction(prices: pd.Series, horizon: int = 30, lookback: int = 60) -> pd.Series:
     """
-    Prédiction linéaire simple (régression via numpy).
-
-    prices  : série de prix historiques
-    horizon : nombre de périodes futures à prédire
+    Prédiction linéaire simple (sans sklearn).
+    - prices: série de prix (DatetimeIndex)
+    - horizon: nb de points à prédire
+    - lookback: nb de points récents utilisés pour ajuster la droite
     """
+    if prices is None or len(pd.Series(prices).dropna()) < 5:
+        raise ValueError("Pas assez de données pour prédire.")
 
-    prices = prices.dropna()
+    p = pd.Series(prices).dropna()
+    if not isinstance(p.index, pd.DatetimeIndex):
+        raise ValueError("L'index de prices doit être un DatetimeIndex.")
 
-    if len(prices) < 10:
-        raise ValueError("Pas assez de données pour effectuer une prédiction")
+    p = p.iloc[-min(int(lookback), len(p)) :]
 
-    # Temps (0, 1, 2, ...)
-    x = np.arange(len(prices))
-    y = prices.values
+    t0 = p.index[0]
+    x = (p.index - t0).total_seconds().astype(float)
+    y = p.values.astype(float)
 
-    # Régression linéaire y = a*x + b
-    a, b = np.polyfit(x, y, 1)
+    a, b = np.polyfit(x, y, deg=1)
 
-    # Projection future
-    x_future = np.arange(len(prices), len(prices) + horizon)
-    y_future = a * x_future + b
+    step = _infer_step(p.index)
+    last_t = p.index[-1]
+    future_index = pd.date_range(start=last_t + step, periods=int(horizon), freq=step)
 
-    future_index = pd.date_range(
-        start=prices.index[-1],
-        periods=horizon + 1,
-        freq=prices.index.inferred_freq or "D"
-    )[1:]
+    xf = (future_index - t0).total_seconds().astype(float)
+    yf = a * xf + b
 
-    return pd.Series(y_future, index=future_index, name="Prediction")
+    return pd.Series(yf, index=future_index, name="prediction")
