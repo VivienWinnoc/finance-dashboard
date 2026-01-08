@@ -73,7 +73,11 @@ if run:
     prices = load_price_data(tickers)
 
     if prices.shape[0] < 50:
-        st.warning("not much data for these tickers -> results may be a bit noisy")
+        st.warning(
+    "Limited amount of historical data for the selected tickers. "
+    "Results may be less reliable."
+)
+
 
     port, rets = simulate_portfolio(
         prices,
@@ -95,9 +99,11 @@ if run:
 
     st.caption(
     "High total returns are mainly driven by long-term compounding, "
-    "equal-weight rebalancing, and the strong performance of US equities "
-    "over the selected period."
+    "equal-weight rebalancing effects, and the strong historical performance "
+    "of US equities over the selected period. "
+    "This does not imply similar future results."
 )
+
 
 
     st.subheader("Prices")
