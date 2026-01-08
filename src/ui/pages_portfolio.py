@@ -72,8 +72,25 @@ def render_portfolio_page():
     st.title("Quant B — Portfolio")
     st.caption("Equal-weight portfolio · optional rebalancing · diagnostics (corr/vol)")
 
+    with st.expander("What this model is doing (and what it is not)"):
+        st.markdown(
+            """
+**What it does**
+- Builds an **equal-weight** portfolio across the selected assets.
+- Applies optional **rebalancing** (None / Weekly / Monthly).
+- Compares assets vs portfolio on a **normalized** basis (start = 1).
+
+**What it is not**
+- Not a forecasting model, and not meant for live trading signals.
+
+**Key limitations**
+- No transaction costs, no slippage, close-to-close execution assumption.
+            """
+        )
+
     with st.sidebar:
         st.subheader("Quant B — Parameters")
+
 
         tickers_raw = st.text_input(
             "Tickers (comma-separated, min 3)",
